@@ -1,13 +1,22 @@
+  
+
+
+
 class tablero{
   final private int gridHeight, gridWidth, block;
   public int[][] grid;
 
-  tablero(int h, int w, int b, color[] col){
+  SoundFile[] soundfiles;
+  int currentFile = 0;
+
+  tablero(int h, int w, int b, color[] col, SoundFile[] files){
     color[] colors=col;
     gridHeight=h;
     gridWidth=w;
     block=b;
     grid =new int[gridHeight][gridWidth];
+
+    soundfiles = files;
 
     for (int x=0;x<=gridWidth-1;x++){
       for (int y=0;y<=gridHeight-1;y++){
@@ -42,13 +51,11 @@ class tablero{
   }
 
   boolean saveBlock(int x, int y, int c){
-    try{
+    if( y < 0 || x < 0 || y > gridHeight || x > gridWidth){
+      return false;
+    }else{
       grid[y][x]=c;
       return true;
-    }
-    catch(Exception e){
-      println("Game Over");
-      return false;
     }
   }
 
@@ -72,12 +79,14 @@ class tablero{
         grid[y][x]=grid[y-1][x];
       }
     }
-
+    soundfiles[currentFile].stop();
+    currentFile = (currentFile+1) % soundfiles.length;
+    soundfiles[currentFile].play();
   }
 
   int checkLines(){
     int z=0,l=0;
-    println();
+    
     for (int y=0;y<=gridHeight-1;y++){
       z=0;
       for (int x=0;x<=gridWidth-1;x++){

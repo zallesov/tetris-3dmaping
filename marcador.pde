@@ -20,7 +20,7 @@ class marcador{
   }
 
   private void scoreUp(int l){
-    score+=level*10*l;
+    score+=l*10;
   }
 
   void linesUp(int l){

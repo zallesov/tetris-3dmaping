@@ -1,3 +1,5 @@
+import processing.sound.*;
+
 class juego{
 
   pieza piece;
@@ -22,13 +24,13 @@ class juego{
   boolean validMove(String w){
     if (w=="DOWN"){
       //Llego a tope en el borde inferior
-      if(piece.pivot[1]+2+piece.offset[piece.type][piece.rot][3]+1>=board.sizeY()+1) return false;
+      //if(piece.pivot[1]+2+piece.offset[piece.type][piece.rot][3]+1>=board.sizeY()+1) return false;
 
       for (int x=0;x<=4;x++){
         for (int y=0;y<=4;y++){
           if(piece.form[piece.type][piece.rot][y][x]!=0){
-            if(x+piece.pivot[0]-3>=0 && y+piece.pivot[1]-3>=0 ){
-              if(board.checkBlock(x+piece.pivot[0]-3,y+piece.pivot[1]-2)==false) return false;
+            if(x+piece.pivot[0]-2>=0 && y+piece.pivot[1]-2>=0 ){
+              if(board.checkBlock(x+piece.pivot[0]-3,y+piece.pivot[1]-3+1)==false) return false;
             }
           }
         }

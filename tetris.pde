@@ -35,11 +35,34 @@ long upPressedLast;
 boolean downPressed;
 long downPressedLast;
 
+public int currentFile = 0;
+public SoundFile[] gameoverfiles;
+public SoundFile[] erasefiles;
+
 void setup(){
+  SoundFile[] erasefiles_ = {
+    new SoundFile(this, "Abriss_01.wav"), 
+    new SoundFile(this, "Abriss_02.wav"), 
+    new SoundFile(this, "Abriss_03.wav"),
+    new SoundFile(this, "Abriss_04.wav"),
+    new SoundFile(this, "Abriss_05.wav")
+  };
+
+  erasefiles = erasefiles_;
+
+  SoundFile[] gameoverfiles_ = {
+    new SoundFile(this, "Erhalt_01.wav"), 
+    new SoundFile(this, "Erhalt_02.wav"), 
+    new SoundFile(this, "Erhalt_03.wav"),
+    new SoundFile(this, "Erhalt_04.wav"),
+    new SoundFile(this, "Erhalt_05.wav")
+  };
+
+  gameoverfiles = gameoverfiles_;
 
   font=loadFont("font.vlw");
   piece = new pieza(int(random(0,7 )),17,10,30,colors);
-  board = new tablero(15,8,30,colors);
+  board = new tablero(15,8,30,colors, erasefiles);
   score = new marcador(font);
   game = new juego(piece,board,score);
 
@@ -120,10 +143,14 @@ void draw(){
   }
   else{
     fill(255,0,0);
-    textSize(70);
-    text("Game Over",50,250);
-    text("Score",50,290);
-    text(score.lines,40,300);
+    textSize(30);
+    text("Spiel Kaput",50,250);
+    text(score.score+" Punkte",50,290);
+    
+    // currentFile = (currentFile+1) % gameoverfiles.length;
+    // println(">>>>>");
+    // println(gameoverfiles[1]);
+    // gameoverfiles[currentFile].play();
   }
 
 
@@ -148,9 +175,6 @@ void restart(){
 
 void processKyes() {
 
-  println(keyCode);
-  println(key);
-  
   if(!game.getStatus()){
     
       if (downPressed){
