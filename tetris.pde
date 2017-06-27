@@ -1,9 +1,19 @@
+import codeanticode.syphon.*;
+
 import org.gamecontrolplus.gui.*;
 import org.gamecontrolplus.*;
 import net.java.games.input.*;
 
+int WIDTH = 1024;
+int HEIGHT = 768;
+long GAME_TIME = 60*1000;
+long VOICE_INTERVAL = 10*1000;
+
+
 ControlIO control;
 ControlDevice stick;
+
+SyphonServer syphonServer;
 
 public color[] colors={
   color(255,0,0),
@@ -18,11 +28,15 @@ public color[] colors={
 
   PFont font;
 
-pieza piece;
-tablero board;
-marcador score;
-juego game;
+Piece piece;
+Board board;
+
+Game game;
+Audio audio;
 int t1;
+
+long gameStartTime = 0;
+long voiceStartTime = 0;
 
 int buttonPressThreshhold = 70;
 
@@ -35,40 +49,50 @@ long upPressedLast;
 boolean downPressed;
 long downPressedLast;
 
-public int currentFile = 0;
-public SoundFile[] gameoverfiles;
-public SoundFile[] erasefiles;
+
+void settings() {
+  size(WIDTH,HEIGHT, P3D);
+  PJOGL.profile=1;
+}
+
+void loadSounds(){
+  File[] filenames = listFiles("voices");
+  SoundFile[] voices = new SoundFile[filenames.length];
+
+  for(int i=0; i<filenames.length; i++){
+    println(filenames[i].getAbsolutePath());
+    voices[i] =  new SoundFile(this, filenames[i].getAbsolutePath());
+  }
+
+  audio = new Audio(voices,
+    new SoundFile(this, "sounds/attach.wav"),
+    new SoundFile(this, "sounds/line.wav")
+    );
+}
+
+File[] listFiles(String dir) {
+  File file = new File(sketchPath()+"/data/"+dir);
+  if (file.isDirectory()) {
+    File[] files = file.listFiles();
+    return files;
+  } else {
+    return new File[0];
+  }
+}
 
 void setup(){
-  SoundFile[] erasefiles_ = {
-    new SoundFile(this, "Abriss_01.wav"), 
-    new SoundFile(this, "Abriss_02.wav"), 
-    new SoundFile(this, "Abriss_03.wav"),
-    new SoundFile(this, "Abriss_04.wav"),
-    new SoundFile(this, "Abriss_05.wav")
-  };
-
-  erasefiles = erasefiles_;
-
-  SoundFile[] gameoverfiles_ = {
-    new SoundFile(this, "Erhalt_01.wav"), 
-    new SoundFile(this, "Erhalt_02.wav"), 
-    new SoundFile(this, "Erhalt_03.wav"),
-    new SoundFile(this, "Erhalt_04.wav"),
-    new SoundFile(this, "Erhalt_05.wav")
-  };
-
-  gameoverfiles = gameoverfiles_;
+  syphonServer = new SyphonServer(this, "Processing Syphon");
+  
+  loadSounds();
 
   font=loadFont("font.vlw");
-  piece = new pieza(int(random(0,7 )),17,10,30,colors);
-  board = new tablero(15,8,30,colors, erasefiles);
-  score = new marcador(font);
-  game = new juego(piece,board,score);
+  piece = new Piece(int(random(0,7 )),17,10,30,colors);
+  board = new Board(15,8,30,colors);
+  game = new Game(piece,board);
 
   noCursor();
   frameRate(600);
-  size(240,450);
+  //size(WIDTH,HEIGHT);
   
   control = ControlIO.getInstance(this);
   
@@ -119,42 +143,74 @@ public void getUserInput() {
   }
 }
 
-void draw(){
-  getUserInput();
-  processKyes();
-  
-  background(0);
-  game.draw();
+void attachBlock(){
+  if(game.saveBoard()){
+          audio.playEraseLine();  
+        }else{
+          audio.playBlockAttach();
+        }
+        piece.restart(int(random(0,7 )));
+}
 
-  if(!game.getStatus()){
-
-    //Baja automaticamente la pieza
-    if (millis()-t1>=score.vel){
+void updateGame(){
+  if (millis()-t1>=game.velocity){
       t1=millis();
       if (game.validMove("DOWN")){
         piece.move("DOWN");
       }
       else{
-        game.saveBoard();
-        score.linesUp(board.checkLines());
-        piece.restart(int(random(0,7 )));
+        attachBlock();
       }
     }
-  }
-  else{
-    fill(255,0,0);
-    textSize(30);
-    text("Spiel Kaput",50,250);
-    text(score.score+" Punkte",50,290);
-    
-    // currentFile = (currentFile+1) % gameoverfiles.length;
-    // println(">>>>>");
-    // println(gameoverfiles[1]);
-    // gameoverfiles[currentFile].play();
-  }
+}
 
+void drawGameOver(){
+  fill(255,0,0);
+  textSize(30);
+  text("Spiel Kaput",50,250);
+  text(game.score+" Punkte",50,290);
+}
+
+void drawTimeIsUp(){
+  fill(255,0,0);
+  textSize(30);
+  text("Time is up!",50,250);
+  text(game.score+" Punkte",50,290);
+}
+
+void draw(){
+  getUserInput();
+  processKyes();
+  
+  background(0);
+  
+  if(!game.isGameOver() && !game.isTimeIsUp()){
+    updateGame();
+    game.draw();
+    checkGameTimeout();
+    playVoiceIfNeeded();
+  }if(game.isGameOver()){
+    drawGameOver();
+  }if(game.isTimeIsUp()){
+    drawTimeIsUp();
+  }
+    
+  syphonServer.sendScreen();
 
 };
+
+void checkGameTimeout(){
+  if(millis() - gameStartTime > GAME_TIME){
+    game.timeIsUp();
+  }
+}
+
+void playVoiceIfNeeded(){
+  if(millis() - voiceStartTime > VOICE_INTERVAL){
+    voiceStartTime = millis();
+    audio.playRandomVoice();
+  }
+}
 
 void drop(){
   while(game.validMove("DOWN")){
@@ -169,26 +225,21 @@ void rotate(){
   }
   
 void restart(){
-    game.restart();
-  }
- 
+  gameStartTime = millis();
+  game.restart();
+}
 
 void processKyes() {
 
-  if(!game.getStatus()){
+  if(!game.isGameOver() && !game.isTimeIsUp()){
     
       if (downPressed){
-        //if (millis()-t1>=1){
-        //  t1=millis();
           if (game.validMove("DOWN")){
             piece.move("DOWN");
           }
           else{
-            game.saveBoard();
-            score.linesUp(board.checkLines());
-            piece.restart(int(random(0,7 )));
+            attachBlock();
           }
-        //}
       }
      
       if (leftPressed){
@@ -200,8 +251,6 @@ void processKyes() {
         if (game.validMove("RIGHT")){
           piece.move("RIGHT");
         }
-      }
-      
-  
+      }  
   }
 }
