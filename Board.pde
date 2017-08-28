@@ -1,7 +1,4 @@
   
-
-
-
 class Board{
   final private int gridHeight, gridWidth, block;
   public int[][] grid;

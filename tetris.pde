@@ -8,6 +8,7 @@ int WIDTH = 1024;
 int HEIGHT = 768;
 long GAME_TIME = 60*1000;
 long VOICE_INTERVAL = 10*1000;
+int MIN_WIN_SCORE = 0;
 
 
 ControlIO control;
@@ -35,6 +36,8 @@ Game game;
 Audio audio;
 int t1;
 
+PImage menuImage; 
+
 long gameStartTime = 0;
 long voiceStartTime = 0;
 
@@ -48,6 +51,7 @@ boolean upPressed;
 long upPressedLast;
 boolean downPressed;
 long downPressedLast;
+boolean isMenu = true;
 
 
 void settings() {
@@ -65,9 +69,13 @@ void loadSounds(){
   }
 
   audio = new Audio(voices,
+    new SoundFile(this, "sounds/background.wav"),
     new SoundFile(this, "sounds/attach.wav"),
-    new SoundFile(this, "sounds/line.wav")
-    );
+    new SoundFile(this, "sounds/line.wav"),
+    new SoundFile(this, "sounds/win.wav"),
+    new SoundFile(this, "sounds/gameOver.wav")
+    ); //<>//
+
 }
 
 File[] listFiles(String dir) {
@@ -84,6 +92,9 @@ void setup(){
   syphonServer = new SyphonServer(this, "Processing Syphon");
   
   loadSounds();
+  audio.playBackground();
+
+  menuImage = loadImage("menu.jpeg");
 
   font=loadFont("font.vlw");
   piece = new Piece(int(random(0,7 )),17,10,30,colors);
@@ -171,6 +182,18 @@ void drawGameOver(){
   text(game.score+" Punkte",50,290);
 }
 
+boolean soundPlaying = false;
+void playGameOver(){
+  if(!soundPlaying){
+    if(game.score >= MIN_WIN_SCORE){
+      audio.playWin();
+    }else{
+      audio.playGameOver();
+    }
+    soundPlaying = true;
+  }
+}
+
 void drawTimeIsUp(){
   fill(255,0,0);
   textSize(30);
@@ -183,16 +206,19 @@ void draw(){
   processKyes();
   
   background(0);
-  
-  if(!game.isGameOver() && !game.isTimeIsUp()){
+  if(isMenu){
+    image(menuImage, 0,0);
+  }else if(!game.isGameOver() && !game.isTimeIsUp()){
     updateGame();
     game.draw();
     checkGameTimeout();
     playVoiceIfNeeded();
-  }if(game.isGameOver()){
+  }else if(game.isGameOver()){
     drawGameOver();
-  }if(game.isTimeIsUp()){
+    playGameOver();
+  }else if(game.isTimeIsUp()){
     drawTimeIsUp();
+    playGameOver();
   }
     
   syphonServer.sendScreen();
@@ -213,10 +239,16 @@ void playVoiceIfNeeded(){
 }
 
 void drop(){
-  while(game.validMove("DOWN")){
-    piece.move("DOWN");
-  }  
+  if(isMenu){
+      isMenu = false;
+  }else if (game.isGameOver()){
+    restart();
+  }else{ 
+    while(game.validMove("DOWN")){
+      piece.move("DOWN");
+    }  
   }
+}
   
 void rotate(){
   if (game.validMove("ROTATE")){
@@ -227,10 +259,10 @@ void rotate(){
 void restart(){
   gameStartTime = millis();
   game.restart();
+  soundPlaying = false;
 }
 
 void processKyes() {
-
   if(!game.isGameOver() && !game.isTimeIsUp()){
     
       if (downPressed){
